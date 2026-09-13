@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: re-dash DNS - Route 53 hosted zone for the domain, carrying over the email records that were at Hover.
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: re-dash.com
+
+Resources:
+  HostedZone:
+    Type: AWS::Route53::HostedZone
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Name: !Ref DomainName
+
+  # Copied from Hover DNS as observed with dig on 2026-09-13. Add any other
+  # records from Hover's DNS panel here before switching nameservers.
+  HoverEmailRecords:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneId: !Ref HostedZone
+      RecordSets:
+        - Name: !Ref DomainName
+          Type: MX
+          TTL: "3600"
+          ResourceRecords:
+            - "10 mx.hover.com.cust.hostedemail.com."
+        - Name: !Sub "mail.${DomainName}"
+          Type: A
+          TTL: "3600"
+          ResourceRecords:
+            - "216.40.34.41"
+
+Outputs:
+  HostedZoneId:
+    Value: !Ref HostedZone
+  NameServers:
+    Description: Set these as the nameservers for the domain at Hover
+    Value: !Join [", ", !GetAtt HostedZone.NameServers]
