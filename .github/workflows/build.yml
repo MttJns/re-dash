@@ -1,0 +1,27 @@
+name: build
+
+on:
+  schedule:
+    - cron: "0 14 * * 5" # Fridays 14:00 UTC, after Freddie Mac's Thursday rate release
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s tests
+      - run: python build.py
+        env:
+          CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 14
+      # Deploy to S3 + CloudFront is added once the infra design is settled.

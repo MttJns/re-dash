@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Metro housing market</title>
+  <link rel="stylesheet" href="app.css">
+  <script src="app.js" defer></script>
+</head>
+<body class="loading">
+  <div class="wrap">
+    <header class="top">
+      <h1 id="metro-name">Metro housing market</h1>
+      <label class="visually-hidden" for="metro">Metro</label>
+      <select id="metro"></select>
+      <span class="meta" id="built"></span>
+    </header>
+    <p id="status" class="note" hidden></p>
+
+    <main>
+      <section class="tier">
+        <h2>Market balance</h2>
+        <div class="grid t1">
+          <div class="card" id="c-mos"></div>
+          <div class="card" id="c-inventory"></div>
+          <div class="card" id="c-price"></div>
+          <div class="card" id="c-dom"></div>
+          <div class="card" id="c-stl"></div>
+        </div>
+      </section>
+
+      <section class="tier">
+        <h2>Pricing &amp; affordability</h2>
+        <div class="grid t2">
+          <div class="card" id="c-cuts"></div>
+          <div class="card" id="c-absorb"></div>
+          <div class="card" id="c-ppsf"></div>
+          <div class="card span2" id="c-afford"></div>
+          <div class="card" id="c-rent"></div>
+        </div>
+      </section>
+
+      <section class="tier">
+        <h2>Long-term drivers</h2>
+        <div class="grid t3">
+          <div class="card" id="c-yield"></div>
+          <div class="card placeholder">
+            <div class="label">Building permits</div>
+            <div class="note">Next phase: Census Building Permits Survey</div>
+          </div>
+          <div class="card placeholder">
+            <div class="label">Job growth</div>
+            <div class="note">Next phase: BLS metro payrolls (CES)</div>
+          </div>
+          <div class="card placeholder">
+            <div class="label">Net in-migration</div>
+            <div class="note">Next phase: Census population estimates</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer id="sources"></footer>
+  </div>
+</body>
+</html>

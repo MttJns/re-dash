@@ -1,0 +1,14 @@
+# Metros on the dashboard. Adding a metro = adding a [[metro]] block.
+
+[assumptions]
+down_payment = 0.20
+term_years = 30
+
+[[metro]]
+id = "austin-tx"
+name = "Austin, TX"
+cbsa = "12420"               # Census CBSA code; also Redfin's TABLE_ID
+zillow_region_id = "394355"
+# ASSUMPTIONS, not sourced data - replace with real county figures:
+property_tax_rate = 0.019    # effective annual rate, placeholder estimate
+insurance_annual = 3000      # USD per year homeowners insurance, placeholder estimate
