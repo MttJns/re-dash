@@ -434,7 +434,7 @@ function renderSources(d) {
   const items = [
     ["Redfin Data Center", "https://www.redfin.com/news/data-center/", `through ${monthLabel(r.months[r.months.length - 1])}, published ${r.updated}`],
     ["Zillow Research", "https://www.zillow.com/research/data/", `through ${monthLabel(z.months[z.months.length - 1])}`],
-    ["Freddie Mac PMMS via FRED", "https://fred.stlouisfed.org/series/MORTGAGE30US", `week of ${dayLabel(weeks[weeks.length - 1])}`],
+    ["Freddie Mac PMMS", "https://www.freddiemac.com/pmms", `week of ${dayLabel(weeks[weeks.length - 1])}`],
     ["Census ACS 1-year", "https://www.census.gov/programs-surveys/acs", d.income ? `${d.income.year} median family income` : "not loaded"],
   ];
   $("sources").replaceChildren(...items.map(([name, href, detail]) => {

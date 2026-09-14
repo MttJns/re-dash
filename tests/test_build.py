@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from build import MONTHS, REDFIN_FIELDS, read_fred, read_redfin, read_zillow  # noqa: E402
+from build import MONTHS, REDFIN_FIELDS, read_pmms, read_redfin, read_zillow  # noqa: E402
 
 BASE = {
     "TABLE_ID": "12420",
@@ -65,10 +65,10 @@ class ReadZillowTest(unittest.TestCase):
         self.assertEqual(out, {"394355": (["2026-06", "2026-07"], [1641.69, None])})
 
 
-class ReadFredTest(unittest.TestCase):
-    def test_missing_observation_becomes_none(self):
-        text = "observation_date,MORTGAGE30US\n2026-09-03,6.71\n2026-09-10,.\n"
-        self.assertEqual(read_fred(io.StringIO(text)), (["2026-09-03", "2026-09-10"], [6.71, None]))
+class ReadPmmsTest(unittest.TestCase):
+    def test_parses_us_dates_and_blank_rates(self):
+        text = "date,pmms30,pmms30p,pmms15\n9/3/2026,6.71,,6.04\n9/10/2026, ,,6.09\n"
+        self.assertEqual(read_pmms(io.StringIO(text)), (["2026-09-03", "2026-09-10"], [6.71, None]))
 
 
 if __name__ == "__main__":

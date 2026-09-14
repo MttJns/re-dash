@@ -15,5 +15,5 @@ an acknowledgement, and a fix or explanation once it has been investigated.
 - The deployed site at https://re-dash.com
 
 The market data shown on the site comes from third-party public sources (Redfin,
-Zillow, FRED, U.S. Census Bureau); issues with that data itself should go to those
+Zillow, Freddie Mac, U.S. Census Bureau); issues with that data itself should go to those
 providers.

@@ -4,6 +4,7 @@ import argparse
 import csv
 import gzip
 import hashlib
+import http.client
 import json
 import os
 import shutil
@@ -28,7 +29,7 @@ ZILLOW_URLS = {
     "zhvi_luxury": f"{ZILLOW_BASE}/zhvi/Metro_zhvi_uc_sfrcondo_tier_0.67_1.0_sm_sa_month.csv",
     "zori": f"{ZILLOW_BASE}/zori/Metro_zori_uc_sfrcondomfr_sm_month.csv",
 }
-FRED_URL = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=MORTGAGE30US"
+PMMS_URL = "https://www.freddiemac.com/pmms/docs/PMMS_history.csv"
 CENSUS_URL = (
     "https://api.census.gov/data/{year}/acs/acs1?get=B19113_001E"
     "&for=metropolitan%20statistical%20area/micropolitan%20statistical%20area:{cbsa}&key={key}"
@@ -68,8 +69,16 @@ def fetch(url: str, name: str, max_age_hours: float = 12) -> Path:
     print(f"fetching {url}")
     tmp = path.with_name(path.name + ".part")
     request = urllib.request.Request(url, headers={"User-Agent": "re-dash"})
-    with urllib.request.urlopen(request, timeout=600) as response, open(tmp, "wb") as f:
-        shutil.copyfileobj(response, f)
+    for attempt in range(1, 4):
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response, open(tmp, "wb") as f:
+                shutil.copyfileobj(response, f)
+            break
+        except (OSError, http.client.HTTPException) as err:
+            if attempt == 3:
+                raise
+            print(f"  attempt {attempt} failed ({err}); retrying")
+            time.sleep(5 * attempt)
     tmp.replace(path)
     return path
 
@@ -108,10 +117,13 @@ def read_zillow(lines: Iterable[str], region_ids: set) -> dict:
     return out
 
 
-def read_fred(lines: Iterable[str]) -> tuple:
-    reader = csv.reader(lines)
-    next(reader)
-    rows = [(day, num(value)) for day, value in reader][-WEEKS:]
+def read_pmms(lines: Iterable[str]) -> tuple:
+    """Return (weeks, 30-yr rates) from Freddie Mac's PMMS history CSV, whose dates are M/D/YYYY."""
+    rows = []
+    for row in csv.DictReader(lines):
+        month, day, year = row["date"].split("/")
+        rows.append((f"{year}-{int(month):02d}-{int(day):02d}", num(row["pmms30"])))
+    rows = rows[-WEEKS:]
     return [day for day, _ in rows], [value for _, value in rows]
 
 
@@ -154,8 +166,8 @@ def build(config_path: Path, out: Path) -> None:
     for key, url in ZILLOW_URLS.items():
         with open(fetch(url, f"{key}.csv"), newline="") as f:
             zillow[key] = read_zillow(f, {m["zillow_region_id"] for m in metros})
-    with open(fetch(FRED_URL, "MORTGAGE30US.csv"), newline="") as f:
-        weeks, mortgage30 = read_fred(f)
+    with open(fetch(PMMS_URL, "pmms_history.csv"), newline="") as f:
+        weeks, mortgage30 = read_pmms(f)
 
     if out.exists():
         shutil.rmtree(out)
