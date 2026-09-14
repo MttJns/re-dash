@@ -38,8 +38,10 @@ pushes and deletion.
   Never overwrite a data file; every build writes a new `data/<build>/` folder.
 - `index.html` and `data/manifest.json` are the only pointers: short cache, uploaded last, purged on deploy.
 - Favicons have fixed names, so they get a one-day cache.
-- Planned county view: selection goes in the URL hash (`#austin-tx/travis`), one immutable JSON per region,
-  manifest lists regions. Query strings are not in the CloudFront cache key.
+- County view: selection lives in the URL hash (`#austin-tx/travis`; bare URL shows the metro's
+  `default_region`; `#austin-tx` is the whole metro), so every region shares one cached `index.html`. Each region
+  is one immutable JSON (`data/<build>/austin-tx.json`, `data/<build>/austin-tx/<county>.json`); the manifest
+  lists `regions` and keeps each metro's `path` so pages cached before a deploy still load.
 
 ## Data sources and gotchas
 
@@ -52,7 +54,11 @@ pushes and deletion.
   are indices 6 (1-unit), 9, 12, 15. County files (`coYYMMc.txt`) have a different layout.
 - **Census population estimates**: migration series starts at 2021 (2020 covers only April-July).
 - **Census ACS income** needs `CENSUS_API_KEY`; 1-year data only exists for areas with 65,000+ people.
-- Every card shows metro-wide figures; the metro is five counties, not a ZIP code list.
+- **County sources**: Redfin `county_market_tracker.tsv000.gz` (~240 MB, streamed; `TABLE_ID` is Redfin's own
+  county id, not FIPS), Zillow `County_*` CSVs, BPS `County/coYYMMc.txt` (units at indices 7, 10, 13, 16),
+  PEP `co-est{vintage}-alldata.csv` (`SUMLEV` 050). ACS income falls back to 5-year where 1-year is missing
+  (Caldwell). The build warns if county permits or migration don't sum to the metro.
+- Each view shows figures for one region: a county or the whole metro (five counties, not a ZIP code list).
 
 ## Conventions
 

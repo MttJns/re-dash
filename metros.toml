@@ -9,6 +9,44 @@ id = "austin-tx"
 name = "Austin, TX"
 cbsa = "12420"               # Census CBSA code; also Redfin's TABLE_ID
 zillow_region_id = "394355"
+default_region = "travis"    # county shown at re-dash.com/ with no hash
 # ASSUMPTIONS, not sourced data - replace with real county figures:
 property_tax_rate = 0.019    # effective annual rate, placeholder estimate
 insurance_annual = 3000      # USD per year homeowners insurance, placeholder estimate
+
+# Counties in the metro. fips = state + county code; redfin_table_id is Redfin's county TABLE_ID.
+# Counties use the metro's property tax and insurance placeholders.
+[[metro.county]]
+id = "travis"
+name = "Travis County"
+fips = "48453"
+redfin_table_id = "2866"
+zillow_region_id = "1440"
+
+[[metro.county]]
+id = "williamson"
+name = "Williamson County"
+fips = "48491"
+redfin_table_id = "2885"
+zillow_region_id = "3081"
+
+[[metro.county]]
+id = "hays"
+name = "Hays County"
+fips = "48209"
+redfin_table_id = "2744"
+zillow_region_id = "178"
+
+[[metro.county]]
+id = "bastrop"
+name = "Bastrop County"
+fips = "48021"
+redfin_table_id = "2650"
+zillow_region_id = "1533"
+
+[[metro.county]]
+id = "caldwell"
+name = "Caldwell County"
+fips = "48055"
+redfin_table_id = "2667"
+zillow_region_id = "2164"

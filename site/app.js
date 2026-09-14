@@ -381,7 +381,7 @@ function renderAffordability(d) {
     piOut.textContent = F.usd(pi);
     if (d.income) {
       haiOut.textContent = String(Math.round(affordabilityIndex(d.income.median_family_income, pi)));
-      haiNote.textContent = `100 = median family income (${F.usd(d.income.median_family_income)}, ACS ${d.income.year}) exactly qualifies`;
+      haiNote.textContent = `100 = median family income (${F.usd(d.income.median_family_income)}, ${d.income.survey} ${d.income.year}) exactly qualifies`;
     } else {
       haiOut.textContent = "—";
       haiNote.textContent = "Needs Census income (CENSUS_API_KEY)";
@@ -470,7 +470,7 @@ function renderSources(d) {
     ["Freddie Mac PMMS", "https://www.freddiemac.com/pmms", `week of ${dayLabel(weeks[weeks.length - 1])}`],
     ["Census building permits", "https://www.census.gov/construction/bps/", `through ${monthLabel(d.permits.months[d.permits.months.length - 1])}`],
     ["Census population estimates", "https://www.census.gov/programs-surveys/popest.html", `vintage ${d.migration.vintage}`],
-    ["Census ACS 1-year", "https://www.census.gov/programs-surveys/acs", d.income ? `${d.income.year} median family income` : "not loaded"],
+    ["Census ACS", "https://www.census.gov/programs-surveys/acs", d.income ? `${d.income.survey} ${d.income.year} median family income` : "not loaded"],
   ];
   $("sources").replaceChildren(...items.map(([name, href, detail]) => {
     const item = el("span");
@@ -479,8 +479,8 @@ function renderSources(d) {
   }));
 }
 
-function render(d) {
-  $("metro-name").textContent = `${d.metro.name} housing market`;
+function render(d, title) {
+  $("metro-name").textContent = title;
   const b = d.built_at;
   $("built").textContent = `Built ${b.slice(0, 4)}-${b.slice(4, 6)}-${b.slice(6, 8)}`;
   renderTier1(d);
@@ -503,13 +503,31 @@ async function getJSON(path) {
 async function main() {
   const manifest = await getJSON("data/manifest.json");
   const select = $("metro");
-  for (const m of manifest.metros) select.append(el("option", { value: m.id }, m.name));
-  const pick = () => manifest.metros.find((m) => m.id === location.hash.slice(1)) ?? manifest.metros[0];
+  // One view per region; the URL hash is "metro" (whole metro) or "metro/county".
+  const views = [];
+  for (const m of manifest.metros) {
+    const group = el("optgroup", { label: m.name });
+    const add = (key, path, label, title) => {
+      views.push({ key, path, title });
+      group.append(el("option", { value: key }, label));
+    };
+    for (const r of m.regions ?? []) add(`${m.id}/${r.id}`, r.path, r.name, `${r.name} · ${m.name} housing market`);
+    add(m.id, m.path, m.regions ? "Whole metro" : m.name, `${m.name} ${m.regions ? "metro " : ""}housing market`);
+    select.append(group);
+  }
+  const first = manifest.metros[0];
+  const defaultKey = first.default_region ? `${first.id}/${first.default_region}` : first.id;
+  if (!location.hash) history.replaceState(null, "", `#${defaultKey}`);
+  const pick = () => views.find((v) => v.key === location.hash.slice(1)) ?? views.find((v) => v.key === defaultKey);
+  let latestLoad = 0;
   const load = async () => {
-    const entry = pick();
-    select.value = entry.id;
+    const view = pick();
+    const token = ++latestLoad;
+    select.value = view.key;
     document.body.classList.add("loading");
-    render(await getJSON(entry.path));
+    const d = await getJSON(view.path);
+    if (token !== latestLoad) return; // a newer selection is loading
+    render(d, view.title);
     document.body.classList.remove("loading");
   };
   select.addEventListener("change", () => { location.hash = select.value; });

@@ -6,7 +6,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from build import MONTHS, REDFIN_FIELDS, read_bps, read_pep, read_pmms, read_redfin, read_zillow  # noqa: E402
+from build import (  # noqa: E402
+    MONTHS,
+    REDFIN_FIELDS,
+    read_bps,
+    read_bps_county,
+    read_pep,
+    read_pep_county,
+    read_pmms,
+    read_redfin,
+    read_zillow,
+)
 
 BASE = {
     "TABLE_ID": "12420",
@@ -101,6 +111,33 @@ class ReadPepTest(unittest.TestCase):
         self.assertEqual(austin["domestic"][0], 13.0)  # DOMESTICMIG2021
         self.assertEqual(austin["international"][-1], 23.0)  # INTERNATIONALMIG2025
         self.assertEqual(austin["vintage"], 2025)
+
+    def test_reads_county_rows_by_fips(self):
+        fields = ("POPESTIMATE", "NETMIG", "DOMESTICMIG", "INTERNATIONALMIG")
+        columns = ["SUMLEV", "STATE", "COUNTY", *[f"{field}{year}" for field in fields for year in range(2020, 2026)]]
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(columns)
+        writer.writerow(["040", "48", "000", *["9"] * (len(columns) - 3)])
+        writer.writerow(["050", "48", "453", *[str(i) for i in range(len(columns) - 3)]])
+        writer.writerow(["050", "48", "491", *["7"] * (len(columns) - 3)])
+        buf.seek(0)
+        out = read_pep_county(buf, {"48453"}, 2025)
+        self.assertEqual(list(out), ["48453"])
+        self.assertEqual(out["48453"]["net"][-1], 11.0)  # NETMIG2025
+
+
+class ReadBpsCountyTest(unittest.TestCase):
+    def test_reads_units_one_column_later_than_cbsa_files(self):
+        text = (
+            "Survey,FIPS,FIPS,Region,Division,County,,1-unit,,,2-units,,,3-4 units,,,5+ units,,,1-unit rep\n"
+            "Date,State,County,Code,Code,Name,Bldgs,Units,Value,Bldgs,Units,Value,Bldgs,Units,Value,Bldgs,Units,Value,Bldgs\n"
+            " \n"
+            "202607,48,453,3,7,Travis County    ,548,548,114261896,4,8,945429,5,19,2452718,23,1157,10483639,497\n"
+            "202607,48,055,3,7,Caldwell County  ,33,33,8114873,0,0,0,0,0,0,0,0,0,0\n"
+            "202607,01,453,3,6,Not Texas        ,1,1,1,1,1,1,1,1,1,1,1,1,1\n"
+        )
+        self.assertEqual(read_bps_county(io.StringIO(text), {"48453"}), {"48453": (548.0, 1184.0)})
 
 
 if __name__ == "__main__":
