@@ -445,7 +445,6 @@ function renderSources(d) {
 }
 
 function render(d) {
-  document.title = `${d.metro.name} housing market`;
   $("metro-name").textContent = `${d.metro.name} housing market`;
   const b = d.built_at;
   $("built").textContent = `Built ${b.slice(0, 4)}-${b.slice(4, 6)}-${b.slice(6, 8)}`;
