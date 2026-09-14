@@ -72,4 +72,5 @@ Run from the repo root with AWS credentials for the target account (`aws configu
 ## Notes
 
 - The bucket and hosted zone are retained if their stacks are deleted, so a stack deletion never takes the domain or content down with it.
+- The bucket is versioned and keeps replaced or deleted files for 30 days. To roll back a bad deploy, restore the previous versions of `index.html` and `data/manifest.json` (S3 console > object > Versions), then invalidate `/`, `/index.html` and `/data/manifest.json`. The older data and asset files they point to are still in the bucket.
 - The deploy role can only list/write this bucket and invalidate this distribution, and only from `main` of `GitHubRepo`.

@@ -58,6 +58,16 @@ Resources:
       OwnershipControls:
         Rules:
           - ObjectOwnership: BucketOwnerEnforced
+      # Versioning lets a bad deploy be rolled back; old versions expire after 30 days.
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-noncurrent-versions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 30
+            ExpiredObjectDeleteMarker: true
 
   OriginAccessControl:
     Type: AWS::CloudFront::OriginAccessControl
