@@ -8,10 +8,13 @@ Parameters:
   HostedZoneId:
     Type: AWS::Route53::HostedZone::Id
     Description: HostedZoneId output of the dns stack
-  GitHubRepo:
+  GitHubSubjectPrefix:
     Type: String
-    Default: MttJns/re-dash
-    Description: owner/name of the repository allowed to deploy from its main branch
+    Default: "repo:MttJns@791475/re-dash@1369131363"
+    Description: >-
+      OIDC subject prefix of the repository allowed to deploy from its main branch.
+      GitHub embeds immutable owner and repo IDs; look it up with
+      gh api repos/OWNER/REPO/actions/oidc/customization/sub --jq .sub_claim_prefix
   CreateGitHubOidcProvider:
     Type: String
     Default: "true"
@@ -188,7 +191,7 @@ Resources:
   DeployRole:
     Type: AWS::IAM::Role
     Properties:
-      Description: !Sub "GitHub Actions deploys for ${GitHubRepo}"
+      Description: !Sub "GitHub Actions deploys for ${GitHubSubjectPrefix}"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -202,7 +205,7 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubRepo}:ref:refs/heads/main"
+                token.actions.githubusercontent.com:sub: !Sub "${GitHubSubjectPrefix}:ref:refs/heads/main"
       Policies:
         - PolicyName: deploy-site
           PolicyDocument:

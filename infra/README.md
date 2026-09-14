@@ -45,11 +45,14 @@ Run from the repo root with AWS credentials for the target account (`aws configu
    aws iam list-open-id-connect-providers
    ```
 
-5. **Create the site stack** (certificate validation and CloudFront setup take several minutes).
+5. **Create the site stack** (certificate validation and CloudFront setup take several minutes). The deploy role trusts GitHub's OIDC subject, which embeds the owner and repo IDs, so the GitHub repo must exist first. Look up its prefix:
+   ```sh
+   gh api repos/MttJns/re-dash/actions/oidc/customization/sub --jq .sub_claim_prefix
+   ```
    ```sh
    aws cloudformation deploy --region us-east-1 --stack-name re-dash-site --template-file infra/site.yaml \
      --capabilities CAPABILITY_IAM \
-     --parameter-overrides HostedZoneId=<HostedZoneId from step 2> GitHubRepo=MttJns/re-dash CreateGitHubOidcProvider=true
+     --parameter-overrides HostedZoneId=<HostedZoneId from step 2> GitHubSubjectPrefix=<prefix> CreateGitHubOidcProvider=true
    aws cloudformation describe-stacks --region us-east-1 --stack-name re-dash-site --query "Stacks[0].Outputs" --output table
    ```
 
@@ -62,15 +65,15 @@ Run from the repo root with AWS credentials for the target account (`aws configu
 
 7. **Hand deploys to GitHub Actions.** Create the `MttJns/re-dash` repo and push `main`, then:
    ```sh
-   gh variable set AWS_DEPLOY_ROLE_ARN --body <DeployRoleArn>
+   gh secret set AWS_DEPLOY_ROLE_ARN --body <DeployRoleArn>
    gh variable set SITE_BUCKET --body <SiteBucket>
    gh variable set DISTRIBUTION_ID --body <DistributionId>
    gh secret set CENSUS_API_KEY
    ```
-   The `deploy` job skips until `AWS_DEPLOY_ROLE_ARN` is set; after that every push to `main` and the weekly schedule rebuild and deploy.
+   The role ARN is a secret, not a variable, because GitHub prints action inputs in public logs and only secrets are masked there. The `deploy` job skips until `DISTRIBUTION_ID` is set; after that every push to `main` and the weekly schedule rebuild and deploy.
 
 ## Notes
 
 - The bucket and hosted zone are retained if their stacks are deleted, so a stack deletion never takes the domain or content down with it.
 - The bucket is versioned and keeps replaced or deleted files for 30 days. To roll back a bad deploy, restore the previous versions of `index.html` and `data/manifest.json` (S3 console > object > Versions), then invalidate `/`, `/index.html` and `/data/manifest.json`. The older data and asset files they point to are still in the bucket.
-- The deploy role can only list/write this bucket and invalidate this distribution, and only from `main` of `GitHubRepo`.
+- The deploy role can only list/write this bucket and invalidate this distribution, and only from `main` of the repository identified by `GitHubSubjectPrefix`. Because that prefix uses immutable IDs, a different repo later created under the same name can't deploy.
