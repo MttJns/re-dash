@@ -16,6 +16,7 @@ Resources:
 
   # Copied from Hover DNS as observed with dig on 2026-09-13. Add any other
   # records from Hover's DNS panel here before switching nameservers.
+  # The apex and www A records are replaced by CloudFront aliases in site.yaml.
   HoverEmailRecords:
     Type: AWS::Route53::RecordSetGroup
     Properties:
@@ -27,6 +28,13 @@ Resources:
           ResourceRecords:
             - "10 mx.hover.com.cust.hostedemail.com."
         - Name: !Sub "mail.${DomainName}"
+          Type: A
+          TTL: "3600"
+          ResourceRecords:
+            - "216.40.34.41"
+        # Hover's wildcard; covers webmail, imap, smtp and any other subdomain.
+        # Explicit names (apex, www, mail) take precedence over it.
+        - Name: !Sub "*.${DomainName}"
           Type: A
           TTL: "3600"
           ResourceRecords:
