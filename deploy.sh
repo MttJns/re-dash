@@ -22,6 +22,11 @@ aws s3 cp "$DIST" "s3://$BUCKET" --recursive --only-show-errors \
   --exclude "*" --include "app.*" --include "data/*/*" \
   --cache-control "$IMMUTABLE"
 
+# Icons keep fixed names, so they get a one-day cache instead of immutable.
+aws s3 cp "$DIST" "s3://$BUCKET" --recursive --only-show-errors \
+  --exclude "*" --include "favicon.ico" --include "favicon-32.png" --include "apple-touch-icon.png" \
+  --cache-control "public, max-age=86400"
+
 aws s3 cp "$DIST/data/manifest.json" "s3://$BUCKET/data/manifest.json" --only-show-errors \
   --cache-control "$SHORT" --content-type "application/json"
 aws s3 cp "$DIST/index.html" "s3://$BUCKET/index.html" --only-show-errors \

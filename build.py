@@ -153,6 +153,8 @@ def copy_site(out: Path) -> None:
         (out / hashed).write_bytes(body)
         html = html.replace(f'"{name}"', f'"{hashed}"')
     (out / "index.html").write_text(html)
+    for name in ("favicon.ico", "favicon-32.png", "apple-touch-icon.png"):
+        shutil.copyfile(SITE / name, out / name)
 
 
 def build(config_path: Path, out: Path) -> None:
