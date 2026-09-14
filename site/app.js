@@ -429,12 +429,47 @@ function renderYield(d) {
   });
 }
 
+function renderPermits(d) {
+  const p = d.permits;
+  const total = p.single_family.map((s, i) => (s == null ? null : s + (p.multifamily[i] ?? 0)));
+  const i = latest(total);
+  const notes = [i >= 0 ? `${monthLabel(p.months[i])}: ${F.int(p.single_family[i])} single-family · ${F.int(p.multifamily[i])} multifamily` : ""];
+  // Single months are noisy, so compare the latest 12 months with the 12 before.
+  if (i >= 23) {
+    const sum = (from, to) => total.slice(from, to).reduce((acc, v) => acc + (v ?? 0), 0);
+    const recent = sum(i - 11, i + 1), prior = sum(i - 23, i - 11);
+    const change = (recent / prior - 1) * 100;
+    notes.push(`${F.int(recent)} in the last 12 months, ${change > 0 ? "+" : change < 0 ? "−" : ""}${Math.abs(change).toFixed(1)}% vs prior 12`);
+  }
+  fillCard("c-permits", {
+    label: "Housing units permitted", value: F.int(total[i]), notes,
+    chart: sparkline("Housing units permitted", p.months, total, F.int),
+  });
+}
+
+function renderMigration(d) {
+  const g = d.migration;
+  const i = latest(g.net);
+  const signed = safe((v) => `${v < 0 ? "−" : "+"}${F.int(Math.abs(v))}`);
+  const prior = i > 0 && g.net[i - 1] != null ? ` · ${signed(g.net[i - 1])} in ${g.years[i - 1]}` : "";
+  const notes = [
+    `${g.years[i]} · ${((g.net[i] / g.population[i]) * 100).toFixed(1)}% of population${prior}`,
+    `${signed(g.domestic[i])} domestic · ${signed(g.international[i])} international`,
+  ];
+  fillCard("c-migration", {
+    label: "Net in-migration", value: signed(g.net[i]), notes,
+    chart: { ...sparkline("Net in-migration", g.years, g.net, signed), xFmt: String },
+  });
+}
+
 function renderSources(d) {
   const r = d.redfin, z = d.zillow, weeks = d.rates.weeks;
   const items = [
     ["Redfin Data Center", "https://www.redfin.com/news/data-center/", `through ${monthLabel(r.months[r.months.length - 1])}, published ${r.updated}`],
     ["Zillow Research", "https://www.zillow.com/research/data/", `through ${monthLabel(z.months[z.months.length - 1])}`],
     ["Freddie Mac PMMS", "https://www.freddiemac.com/pmms", `week of ${dayLabel(weeks[weeks.length - 1])}`],
+    ["Census building permits", "https://www.census.gov/construction/bps/", `through ${monthLabel(d.permits.months[d.permits.months.length - 1])}`],
+    ["Census population estimates", "https://www.census.gov/programs-surveys/popest.html", `vintage ${d.migration.vintage}`],
     ["Census ACS 1-year", "https://www.census.gov/programs-surveys/acs", d.income ? `${d.income.year} median family income` : "not loaded"],
   ];
   $("sources").replaceChildren(...items.map(([name, href, detail]) => {
@@ -452,6 +487,8 @@ function render(d) {
   renderMechanics(d);
   renderAffordability(d);
   renderYield(d);
+  renderPermits(d);
+  renderMigration(d);
   renderSources(d);
 }
 

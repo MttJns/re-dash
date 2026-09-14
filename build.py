@@ -7,6 +7,7 @@ import hashlib
 import http.client
 import json
 import os
+import re
 import shutil
 import time
 import tomllib
@@ -30,6 +31,10 @@ ZILLOW_URLS = {
     "zori": f"{ZILLOW_BASE}/zori/Metro_zori_uc_sfrcondomfr_sm_month.csv",
 }
 PMMS_URL = "https://www.freddiemac.com/pmms/docs/PMMS_history.csv"
+BPS_BASE = "https://www2.census.gov/econ/bps/CBSA%20(beginning%20Jan%202024)/"
+PEP_URL = (
+    "https://www2.census.gov/programs-surveys/popest/datasets/2020-{vintage}/metro/totals/cbsa-est{vintage}-alldata.csv"
+)
 CENSUS_URL = (
     "https://api.census.gov/data/{year}/acs/acs1?get=B19113_001E"
     "&for=metropolitan%20statistical%20area/micropolitan%20statistical%20area:{cbsa}&key={key}"
@@ -75,7 +80,7 @@ def fetch(url: str, name: str, max_age_hours: float = 12) -> Path:
                 shutil.copyfileobj(response, f)
             break
         except (OSError, http.client.HTTPException) as err:
-            if attempt == 3:
+            if attempt == 3 or (isinstance(err, urllib.error.HTTPError) and err.code < 500):
                 raise
             print(f"  attempt {attempt} failed ({err}); retrying")
             time.sleep(5 * attempt)
@@ -127,6 +132,47 @@ def read_pmms(lines: Iterable[str]) -> tuple:
     return [day for day, _ in rows], [value for _, value in rows]
 
 
+def read_bps(lines: Iterable[str], cbsas: set) -> dict:
+    """Return {cbsa: (single_family_units, multifamily_units)} from one Census BPS monthly CBSA file."""
+    out = {}
+    for row in csv.reader(lines):
+        if len(row) < 16 or not row[0].strip().isdigit() or row[2].strip() not in cbsas:
+            continue
+        # Units columns for 1-unit, 2-unit, 3-4 unit, and 5+ unit structures.
+        multifamily = sum(num(row[i]) or 0 for i in (9, 12, 15))
+        out[row[2].strip()] = (num(row[6]), multifamily)
+    return out
+
+
+def read_pep(lines: Iterable[str], cbsas: set, vintage: int) -> dict:
+    """Return migration and population by year for metro rows; starts at 2021 since 2020 covers only April-July."""
+    years = list(range(2021, vintage + 1))
+    out = {}
+    for row in csv.DictReader(lines):
+        if row["CBSA"] in cbsas and row["LSAD"] == "Metropolitan Statistical Area":
+            out[row["CBSA"]] = {
+                "vintage": vintage,
+                "years": years,
+                "population": [num(row[f"POPESTIMATE{y}"]) for y in years],
+                "net": [num(row[f"NETMIG{y}"]) for y in years],
+                "domestic": [num(row[f"DOMESTICMIG{y}"]) for y in years],
+                "international": [num(row[f"INTERNATIONALMIG{y}"]) for y in years],
+            }
+    return out
+
+
+def fetch_pep() -> tuple:
+    """Return (vintage, path) for the newest available Census metro population estimates file."""
+    this_year = datetime.now(timezone.utc).year
+    for vintage in range(this_year - 1, this_year - 4, -1):
+        try:
+            return vintage, fetch(PEP_URL.format(vintage=vintage), f"cbsa-est{vintage}.csv")
+        except urllib.error.HTTPError as err:
+            if err.code != 404:
+                raise
+    raise SystemExit("no Census population estimates file found")
+
+
 def fetch_income(cbsa: str, key: Optional[str]) -> Optional[dict]:
     if not key:
         print("CENSUS_API_KEY not set; affordability index will be unavailable")
@@ -171,6 +217,25 @@ def build(config_path: Path, out: Path) -> None:
     with open(fetch(PMMS_URL, "pmms_history.csv"), newline="") as f:
         weeks, mortgage30 = read_pmms(f)
 
+    cbsas = {m["cbsa"] for m in metros}
+    bps_index = fetch(BPS_BASE, "bps_index.html").read_text(errors="replace")
+    bps_files = sorted(set(re.findall(r"cbsa\d{4}c\.txt", bps_index)))[-MONTHS:]
+    if not bps_files:
+        raise SystemExit("no Census building permit files found")
+    permits = {cbsa: {"months": [], "single_family": [], "multifamily": []} for cbsa in cbsas}
+    for name in bps_files:
+        with open(fetch(BPS_BASE + name, name), newline="", encoding="latin-1") as f:
+            rows = read_bps(f, cbsas)
+        for cbsa, series in permits.items():
+            single_family, multifamily = rows.get(cbsa, (None, None))
+            series["months"].append(f"20{name[4:6]}-{name[6:8]}")
+            series["single_family"].append(single_family)
+            series["multifamily"].append(multifamily)
+
+    vintage, pep_path = fetch_pep()
+    with open(pep_path, newline="", encoding="latin-1") as f:
+        migration = read_pep(f, cbsas, vintage)
+
     if out.exists():
         shutil.rmtree(out)
     data_dir = out / "data" / version
@@ -186,6 +251,10 @@ def build(config_path: Path, out: Path) -> None:
             raise SystemExit(f"no Zillow rows for {m['id']} in {missing}")
         if len({tuple(zillow[k][rid][0]) for k in ZILLOW_URLS}) != 1:
             raise SystemExit(f"Zillow files disagree on months for {m['id']}")
+        if all(v is None for v in permits[m["cbsa"]]["single_family"]):
+            raise SystemExit(f"no Census building permits for {m['id']} (cbsa {m['cbsa']})")
+        if m["cbsa"] not in migration:
+            raise SystemExit(f"no Census population estimates for {m['id']} (cbsa {m['cbsa']})")
 
         doc = {
             "metro": {"id": m["id"], "name": m["name"], "cbsa": m["cbsa"]},
@@ -198,6 +267,8 @@ def build(config_path: Path, out: Path) -> None:
             "redfin": redfin[m["cbsa"]],
             "zillow": {"months": zillow["zhvi_mid"][rid][0], **{k: zillow[k][rid][1] for k in ZILLOW_URLS}},
             "rates": {"weeks": weeks, "mortgage30": mortgage30},
+            "permits": permits[m["cbsa"]],
+            "migration": migration[m["cbsa"]],
             "income": fetch_income(m["cbsa"], os.environ.get("CENSUS_API_KEY")),
         }
         path = f"data/{version}/{m['id']}.json"
