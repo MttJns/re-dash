@@ -37,7 +37,8 @@ pushes and deletion.
 - Content-hashed `app.<hash>.css/js` and `data/<build>/...json` are immutable (`max-age=31536000, immutable`).
   Never overwrite a data file; every build writes a new `data/<build>/` folder.
 - `index.html` and `data/manifest.json` are the only pointers: short cache, uploaded last, purged on deploy.
-- Favicons have fixed names, so they get a one-day cache.
+- Pointers and favicons stay at CloudFront for 30 days (`s-maxage=2592000`) and rely on the deploy invalidation;
+  browsers recheck pointers every 60s and icons daily. Manual bucket changes need a manual invalidation.
 - County view: selection lives in the URL hash (`#austin-tx/travis`; bare URL shows the metro's
   `default_region`; `#austin-tx` is the whole metro), so every region shares one cached `index.html`. Each region
   is one immutable JSON (`data/<build>/austin-tx.json`, `data/<build>/austin-tx/<county>.json`); the manifest

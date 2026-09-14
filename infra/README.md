@@ -18,8 +18,11 @@ They are separate because the certificate can't validate until Hover points the 
 | Path | Cache-Control | Why |
 |---|---|---|
 | `app.<hash>.css`, `app.<hash>.js` | `max-age=31536000, immutable` | name changes when content changes |
-| `data/<build>/<metro>.json` | `max-age=31536000, immutable` | each build writes a new folder |
-| `index.html`, `data/manifest.json` | `max-age=60, s-maxage=300` | pointers to the current build; invalidated on each deploy |
+| `data/<build>/...json` | `max-age=31536000, immutable` | each build writes a new folder |
+| `index.html`, `data/manifest.json` | `max-age=60, s-maxage=2592000` | pointers to the current build; CloudFront keeps them 30 days, invalidated on each deploy |
+| `favicon.ico`, `favicon-32.png`, `apple-touch-icon.png` | `max-age=86400, s-maxage=2592000` | fixed names; invalidated on each deploy |
+
+Because the edge copies last 30 days, any change made to the bucket outside `deploy.sh` needs a manual invalidation.
 
 `deploy.sh` keeps the newest 4 data folders and deletes older ones.
 
