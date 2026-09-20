@@ -63,6 +63,12 @@ body {
 main { transition: opacity 0.15s; }
 body.loading main { opacity: 0.5; }
 
+.weekly {
+  margin: 0 0 10px; padding-left: 10px; border-left: 2px solid var(--s1);
+  font-size: 13px; color: var(--ink-2);
+}
+.weekly b { color: var(--ink); }
+
 .tier { margin-bottom: 8px; }
 .tier > h2 {
   margin: 0 0 6px; font-size: 11px; font-weight: 600;

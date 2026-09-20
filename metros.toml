@@ -4,6 +4,11 @@
 down_payment = 0.20
 term_years = 30
 
+# One hand-written line shown above the cards on every view. Rewrite it when the weekly data lands.
+[weekly]
+label = "9/18 Week Update"
+text = "Mid-tier home values fell about 1.5% across the metro (Austin $424.3k → $418.0k; Travis $473.1k → $466.1k). Combined with the rate rising to 6.95%, affordability got worse this week even though prices fell."
+
 [[metro]]
 id = "austin-tx"
 name = "Austin, TX"

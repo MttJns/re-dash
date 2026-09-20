@@ -348,6 +348,7 @@ def build(config_path: Path, out: Path) -> None:
                 "insurance_annual": m["insurance_annual"],
             },
             "rates": {"weeks": weeks, "mortgage30": mortgage30},
+            "weekly": config.get("weekly"),
         }
         metro_data = region_data(
             f"{m['id']} (cbsa {m['cbsa']})", redfin.get(m["cbsa"]), zillow, m["zillow_region_id"],

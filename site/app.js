@@ -462,6 +462,13 @@ function renderMigration(d) {
   });
 }
 
+function renderWeekly(weekly) {
+  const line = $("weekly");
+  line.hidden = !weekly?.text;
+  if (line.hidden) return;
+  line.replaceChildren(el("b", {}, weekly.label ?? ""), document.createTextNode(` ${weekly.text}`));
+}
+
 function renderSources(d) {
   const r = d.redfin, z = d.zillow, weeks = d.rates.weeks;
   const items = [
@@ -483,6 +490,7 @@ function render(d, title) {
   $("metro-name").textContent = title;
   const b = d.built_at;
   $("built").textContent = `Built ${b.slice(0, 4)}-${b.slice(4, 6)}-${b.slice(6, 8)}`;
+  renderWeekly(d.weekly);
   renderTier1(d);
   renderMechanics(d);
   renderAffordability(d);
