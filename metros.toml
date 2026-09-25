@@ -6,8 +6,8 @@ term_years = 30
 
 # One hand-written line shown above the cards on every view. Rewrite it when the weekly data lands.
 [weekly]
-label = "9/18 Week Update"
-text = "Mid-tier home values fell about 1.5% across the metro (Austin $424.3k → $418.0k; Travis $473.1k → $466.1k). Combined with the rate rising to 6.95%, affordability got worse this week even though prices fell."
+label = "9/25 Week Update"
+text = "The 30-year rate rose again to 7.03% from 6.95%. August building permits arrived well below July across the metro — single-family 1,419 → 1,147 and multifamily 1,186 → 777 — pointing to less new supply ahead. Home values and sales figures are unchanged this week."
 
 [[metro]]
 id = "austin-tx"
