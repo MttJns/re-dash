@@ -6,8 +6,8 @@ term_years = 30
 
 # One hand-written line shown above the cards on every view. Rewrite it when the weekly data lands.
 [weekly]
-label = "9/25 Week Update"
-text = "The 30-year rate rose again to 7.03% from 6.95%. August building permits arrived well below July across the metro — single-family 1,419 → 1,147 and multifamily 1,186 → 777 — pointing to less new supply ahead. Home values and sales figures are unchanged this week."
+label = "10/15 Week Update"
+text = "The 30-year rate held at 7.40% this week after climbing from 7.03% over the previous three weeks, which adds about $90 a month in principal and interest on a mid-tier Travis County home ($466k, 20% down). Home values, sales and permit figures are unchanged; September Zillow and permit data have not posted yet."
 
 [[metro]]
 id = "austin-tx"
