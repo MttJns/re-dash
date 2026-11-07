@@ -307,7 +307,7 @@ function renderTier1(d) {
 
   fillCard("c-stl", {
     label: "Sale-to-list ratio", value: F.share(last(r.sale_to_list)),
-    notes: [yoyText(r.sale_to_list, "pts"), `${F.share(last(r.sold_above_list))} sold above list`],
+    notes: [yoyText(r.sale_to_list, "pts"), `${F.share(last(r.sold_above_list))} sold above original list`],
     chart: sparkline("Sale-to-list ratio", m, r.sale_to_list, F.share),
   });
 }
@@ -316,7 +316,7 @@ function renderMechanics(d) {
   const r = d.redfin, m = r.months;
 
   fillCard("c-cuts", {
-    label: "Listings with a price drop", value: F.share(last(r.price_drops)), notes: [yoyText(r.price_drops, "pts")],
+    label: "Listings with a price drop", value: F.share(last(r.price_drops)), notes: [yoyText(r.price_drops, "pts"), "Cuts of 1% or more"],
     chart: trend("Share of listings with a price drop", m, [{ name: "Price drops", values: r.price_drops, color: "var(--s1)" }], F.share, { tickFmt: F.shareTick, area: true }),
   });
 
@@ -472,7 +472,7 @@ function renderWeekly(weekly) {
 function renderSources(d) {
   const r = d.redfin, z = d.zillow, weeks = d.rates.weeks;
   const items = [
-    ["Redfin Data Center", "https://www.redfin.com/news/data-center/", `through ${monthLabel(r.months[r.months.length - 1])}, published ${r.updated}`],
+    ["Redfin Data Center", "https://www.redfin.com/news/data-center/", `through ${monthLabel(r.months[r.months.length - 1])}, published ${r.updated}, ${r.seasonally_adjusted ? "seasonally adjusted except median sale price" : "not seasonally adjusted"}`],
     ["Zillow Research", "https://www.zillow.com/research/data/", `through ${monthLabel(z.months[z.months.length - 1])}`],
     ["Freddie Mac PMMS", "https://www.freddiemac.com/pmms", `week of ${dayLabel(weeks[weeks.length - 1])}`],
     ["Census building permits", "https://www.census.gov/construction/bps/", `through ${monthLabel(d.permits.months[d.permits.months.length - 1])}`],

@@ -46,8 +46,11 @@ pushes and deletion.
 
 ## Data sources and gotchas
 
-- **Redfin** metro tracker TSV on S3: filter `TABLE_ID` = CBSA, `PROPERTY_TYPE` = All Residential,
-  `IS_SEASONALLY_ADJUSTED` = false.
+- **Redfin** Data Center CSVs on S3 under `redfin_data_center/` (the old `redfin_market_tracker/` TSVs stopped
+  updating in June 2026 and now return 403): `housing_market/monthly/all_metros.csv` matched on `REGION ID` = CBSA,
+  plus `price_drops/monthly/all_metros.csv`, which has no id column and is matched on `redfin_name`. Percent columns
+  are converted to ratios. Monthly metro figures are seasonally adjusted except median sale price; county figures
+  are not, and the UI says which.
 - **Zillow** ZHVI tiers and ZORI wide CSVs, matched on `RegionID`.
 - **Mortgage rates** come from Freddie Mac's `PMMS_history.csv`. FRED's `fredgraph.csv` blocks or stalls
   scripted and CI requests; don't switch back to it.
@@ -55,8 +58,8 @@ pushes and deletion.
   are indices 6 (1-unit), 9, 12, 15. County files (`coYYMMc.txt`) have a different layout.
 - **Census population estimates**: migration series starts at 2021 (2020 covers only April-July).
 - **Census ACS income** needs `CENSUS_API_KEY`; 1-year data only exists for areas with 65,000+ people.
-- **County sources**: Redfin `county_market_tracker.tsv000.gz` (~240 MB, streamed; `TABLE_ID` is Redfin's own
-  county id, not FIPS), Zillow `County_*` CSVs, BPS `County/coYYMMc.txt` (units at indices 7, 10, 13, 16),
+- **County sources**: Redfin `all_counties.csv` (~150 MB; `REGION ID` is Redfin's own county id, not FIPS) and
+  price drops `all_counties.csv` (matched on `redfin_name`), Zillow `County_*` CSVs, BPS `County/coYYMMc.txt` (units at indices 7, 10, 13, 16),
   PEP `co-est{vintage}-alldata.csv` (`SUMLEV` 050). ACS income falls back to 5-year where 1-year is missing
   (Caldwell). The build warns if county permits or migration don't sum to the metro.
 - Each view shows figures for one region: a county or the whole metro (five counties, not a ZIP code list).

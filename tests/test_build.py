@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from build import (  # noqa: E402
     MONTHS,
+    REDFIN_DROPS_FIELD,
     REDFIN_FIELDS,
     read_bps,
     read_bps_county,
@@ -15,21 +16,21 @@ from build import (  # noqa: E402
     read_pep_county,
     read_pmms,
     read_redfin,
+    read_redfin_drops,
     read_zillow,
 )
 
 BASE = {
-    "TABLE_ID": "12420",
-    "IS_SEASONALLY_ADJUSTED": "false",
-    "PROPERTY_TYPE": "All Residential",
-    "LAST_UPDATED": "2026-06-02 14:33:24.470 Z",
+    "LAST UPDATED": "2026-10-07",
+    "FREQUENCY": "Monthly",
+    "REGION ID": "12420",
+    "REGION NAME": "Austin, TX metro area",
 }
 
 
-def redfin_tsv(rows: list) -> io.StringIO:
-    fields = ["PERIOD_BEGIN", *BASE, *REDFIN_FIELDS.values()]
+def redfin_csv(rows: list, fields: list) -> io.StringIO:
     buf = io.StringIO()
-    writer = csv.DictWriter(buf, fields, delimiter="\t", restval="", quoting=csv.QUOTE_NONNUMERIC)
+    writer = csv.DictWriter(buf, ["PERIOD BEGIN", *BASE, *fields], restval="NA", quoting=csv.QUOTE_NONNUMERIC)
     writer.writeheader()
     writer.writerows(rows)
     buf.seek(0)
@@ -37,31 +38,41 @@ def redfin_tsv(rows: list) -> io.StringIO:
 
 
 class ReadRedfinTest(unittest.TestCase):
-    def test_filters_to_all_residential_unadjusted_for_requested_cbsa(self):
+    def test_reads_requested_region_and_converts_percents(self):
         rows = [
-            {**BASE, "PERIOD_BEGIN": "2026-05-01", "INVENTORY": "15220", "PENDING_SALES": "3557", "NEW_LISTINGS": "4762"},
-            {**BASE, "PERIOD_BEGIN": "2026-04-01", "INVENTORY": "14741", "PENDING_SALES": "3815", "NEW_LISTINGS": "0"},
-            {**BASE, "PERIOD_BEGIN": "2026-05-01", "IS_SEASONALLY_ADJUSTED": "true", "INVENTORY": "1"},
-            {**BASE, "PERIOD_BEGIN": "2026-05-01", "PROPERTY_TYPE": "Condo/Co-op", "INVENTORY": "2"},
-            {**BASE, "PERIOD_BEGIN": "2026-05-01", "TABLE_ID": "19100", "INVENTORY": "3"},
+            {**BASE, "PERIOD BEGIN": "2026-09-01", "INVENTORY": "14381", "PENDING SALES": "2833", "NEW LISTINGS": "3884",
+             "AVERAGE SALE TO LIST RATIO (%)": "97.79", "SHARE SOLD ABOVE ORIGINAL LIST (%)": "10.48"},
+            {**BASE, "PERIOD BEGIN": "2026-08-01", "INVENTORY": "14500", "PENDING SALES": "2900", "NEW LISTINGS": "0"},
+            {**BASE, "PERIOD BEGIN": "2026-09-01", "REGION ID": "19100", "INVENTORY": "3"},
         ]
-        out = read_redfin(redfin_tsv(rows), {"12420"})
+        out = read_redfin(redfin_csv(rows, list(REDFIN_FIELDS.values())), {"12420"})
         self.assertEqual(list(out), ["12420"])
         austin = out["12420"]
-        self.assertEqual(austin["months"], ["2026-04", "2026-05"])
-        self.assertEqual(austin["inventory"], [14741.0, 15220.0])
+        self.assertEqual(austin["months"], ["2026-08", "2026-09"])
+        self.assertEqual(austin["inventory"], [14500.0, 14381.0])
         self.assertEqual(austin["median_dom"], [None, None])
-        self.assertEqual(austin["pending_to_new"], [None, round(3557 / 4762, 4)])
-        self.assertEqual(austin["updated"], "2026-06-02")
+        self.assertEqual(austin["sale_to_list"], [None, 0.9779])
+        self.assertEqual(austin["sold_above_list"], [None, 0.1048])
+        self.assertEqual(austin["pending_to_new"], [None, round(2833 / 3884, 4)])
+        self.assertEqual(austin["updated"], "2026-10-07")
 
     def test_keeps_only_most_recent_window(self):
         rows = [
-            {**BASE, "PERIOD_BEGIN": f"{2020 + i // 12}-{i % 12 + 1:02d}-01", "INVENTORY": str(i)}
+            {**BASE, "PERIOD BEGIN": f"{2020 + i // 12}-{i % 12 + 1:02d}-01", "INVENTORY": str(i)}
             for i in range(MONTHS + 3)
         ]
-        austin = read_redfin(redfin_tsv(rows), {"12420"})["12420"]
+        austin = read_redfin(redfin_csv(rows, list(REDFIN_FIELDS.values())), {"12420"})["12420"]
         self.assertEqual(len(austin["months"]), MONTHS)
         self.assertEqual(austin["inventory"][-1], float(MONTHS + 2))
+
+    def test_reads_price_drops_by_region_name(self):
+        rows = [
+            {**BASE, "PERIOD BEGIN": "2026-09-01", REDFIN_DROPS_FIELD: "25.31"},
+            {**BASE, "PERIOD BEGIN": "2026-08-01", REDFIN_DROPS_FIELD: "NA"},
+            {**BASE, "PERIOD BEGIN": "2026-09-01", "REGION NAME": "Austin, MN micro area", REDFIN_DROPS_FIELD: "9"},
+        ]
+        out = read_redfin_drops(redfin_csv(rows, [REDFIN_DROPS_FIELD]), {"Austin, TX metro area"})
+        self.assertEqual(out, {"Austin, TX metro area": {"2026-09": 0.2531, "2026-08": None}})
 
 
 class ReadZillowTest(unittest.TestCase):

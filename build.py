@@ -2,7 +2,6 @@
 
 import argparse
 import csv
-import gzip
 import hashlib
 import http.client
 import json
@@ -22,9 +21,11 @@ ROOT = Path(__file__).parent
 CACHE = ROOT / ".cache"
 SITE = ROOT / "site"
 
-REDFIN_BASE = "https://redfin-public-data.s3.us-west-2.amazonaws.com/redfin_market_tracker"
-REDFIN_URL = f"{REDFIN_BASE}/redfin_metro_market_tracker.tsv000.gz"
-REDFIN_COUNTY_URL = f"{REDFIN_BASE}/county_market_tracker.tsv000.gz"
+REDFIN_BASE = "https://redfin-public-data.s3.us-west-2.amazonaws.com/redfin_data_center"
+REDFIN_URL = f"{REDFIN_BASE}/housing_market/monthly/all_metros.csv"
+REDFIN_COUNTY_URL = f"{REDFIN_BASE}/housing_market/monthly/all_counties.csv"
+REDFIN_DROPS_URL = f"{REDFIN_BASE}/price_drops/monthly/all_metros.csv"
+REDFIN_COUNTY_DROPS_URL = f"{REDFIN_BASE}/price_drops/monthly/all_counties.csv"
 ZILLOW_BASE = "https://files.zillowstatic.com/research/public_csvs"
 ZILLOW_URLS = {
     "zhvi_entry": f"{ZILLOW_BASE}/zhvi/Metro_zhvi_uc_sfrcondo_tier_0.0_0.33_sm_sa_month.csv",
@@ -49,20 +50,21 @@ COUNTY_GEO = "county:{county}&in=state:{state}"
 MONTHS = 25  # current month plus two years of history
 WEEKS = 105
 
+# Redfin Data Center column per field; percent columns are converted to ratios.
 REDFIN_FIELDS = {
-    "median_sale_price": "MEDIAN_SALE_PRICE",
+    "median_sale_price": "MEDIAN SALE PRICE NSA ($)",
     "inventory": "INVENTORY",
-    "months_of_supply": "MONTHS_OF_SUPPLY",
-    "median_dom": "MEDIAN_DOM",
-    "sale_to_list": "AVG_SALE_TO_LIST",
-    "sold_above_list": "SOLD_ABOVE_LIST",
-    "price_drops": "PRICE_DROPS",
-    "median_ppsf": "MEDIAN_PPSF",
-    "median_list_ppsf": "MEDIAN_LIST_PPSF",
-    "homes_sold": "HOMES_SOLD",
-    "pending_sales": "PENDING_SALES",
-    "new_listings": "NEW_LISTINGS",
+    "months_of_supply": "MONTHS OF SUPPLY",
+    "median_dom": "MEDIAN DAYS ON MARKET (DAYS)",
+    "sale_to_list": "AVERAGE SALE TO LIST RATIO (%)",
+    "sold_above_list": "SHARE SOLD ABOVE ORIGINAL LIST (%)",
+    "median_ppsf": "MEDIAN SALE PRICE PER SQ.FT. ($)",
+    "median_list_ppsf": "MEDIAN NEW LISTING PRICE PER SQ.FT. ($)",
+    "homes_sold": "HOMES SOLD",
+    "pending_sales": "PENDING SALES",
+    "new_listings": "NEW LISTINGS",
 }
+REDFIN_DROPS_FIELD = "PERCENT ACTIVE WITH PRICE DROPS (%)"
 
 
 def num(text: str) -> Optional[float]:
@@ -94,26 +96,52 @@ def fetch(url: str, name: str, max_age_hours: float = 12) -> Path:
     return path
 
 
-def read_redfin(lines: Iterable[str], table_ids: set) -> dict:
-    """Return {table_id: {"months", "updated", <field>: [...]}} for All Residential, not seasonally adjusted."""
+def redfin_value(row: dict, col: str) -> Optional[float]:
+    value = num(row[col])
+    return round(value / 100, 4) if value is not None and col.endswith("(%)") else value
+
+
+def read_redfin(lines: Iterable[str], region_ids: set) -> dict:
+    """Return {region_id: {"months", "updated", <field>: [...]}} from a Redfin Data Center monthly housing file."""
     by_id = defaultdict(dict)
-    for row in csv.DictReader(lines, delimiter="\t"):
-        if (
-            row["TABLE_ID"] in table_ids
-            and row["PROPERTY_TYPE"] == "All Residential"
-            and row["IS_SEASONALLY_ADJUSTED"] == "false"
-        ):
-            by_id[row["TABLE_ID"]][row["PERIOD_BEGIN"][:7]] = row
+    for row in csv.DictReader(lines):
+        if row["REGION ID"] in region_ids and row["FREQUENCY"] == "Monthly":
+            by_id[row["REGION ID"]][row["PERIOD BEGIN"][:7]] = row
     out = {}
-    for table_id, by_month in by_id.items():
+    for region_id, by_month in by_id.items():
         months = sorted(by_month)[-MONTHS:]
-        series = {key: [num(by_month[m][col]) for m in months] for key, col in REDFIN_FIELDS.items()}
+        series = {key: [redfin_value(by_month[m], col) for m in months] for key, col in REDFIN_FIELDS.items()}
         series["pending_to_new"] = [
             round(p / n, 4) if p is not None and n else None
             for p, n in zip(series["pending_sales"], series["new_listings"])
         ]
-        out[table_id] = {"months": months, "updated": by_month[months[-1]]["LAST_UPDATED"][:10], **series}
+        out[region_id] = {"months": months, "updated": by_month[months[-1]]["LAST UPDATED"][:10], **series}
     return out
+
+
+def read_redfin_drops(lines: Iterable[str], names: set) -> dict:
+    """Return {region_name: {month: share of active listings with a price drop}} from a Redfin price drops file.
+
+    These files have no region id column, so rows are matched on REGION NAME.
+    """
+    out = defaultdict(dict)
+    for row in csv.DictReader(lines):
+        if row["REGION NAME"] in names and row["FREQUENCY"] == "Monthly":
+            out[row["REGION NAME"]][row["PERIOD BEGIN"][:7]] = redfin_value(row, REDFIN_DROPS_FIELD)
+    return dict(out)
+
+
+def read_redfin_files(url: str, drops_url: str, name: str, regions: dict, adjusted: bool) -> dict:
+    """Return read_redfin output for {region_id: region_name}, with price drops merged in by month."""
+    with open(fetch(url, f"redfin_{name}.csv"), newline="") as f:
+        redfin = read_redfin(f, set(regions))
+    with open(fetch(drops_url, f"redfin_{name}_drops.csv"), newline="") as f:
+        drops = read_redfin_drops(f, set(regions.values()))
+    for region_id, series in redfin.items():
+        by_month = drops.get(regions[region_id], {})
+        series["price_drops"] = [by_month.get(m) for m in series["months"]]
+        series["seasonally_adjusted"] = adjusted
+    return redfin
 
 
 def read_zillow(lines: Iterable[str], region_ids: set) -> dict:
@@ -306,10 +334,14 @@ def build(config_path: Path, out: Path) -> None:
     version = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     census_key = os.environ.get("CENSUS_API_KEY")
 
-    with gzip.open(fetch(REDFIN_URL, "redfin_metro.tsv.gz"), "rt", newline="") as f:
-        redfin = read_redfin(f, {m["cbsa"] for m in metros})
-    with gzip.open(fetch(REDFIN_COUNTY_URL, "redfin_county.tsv.gz"), "rt", newline="") as f:
-        redfin_county = read_redfin(f, {c["redfin_table_id"] for c in counties})
+    # Redfin seasonally adjusts its monthly metro figures (except median sale price) but not its county figures.
+    redfin = read_redfin_files(
+        REDFIN_URL, REDFIN_DROPS_URL, "metro", {m["cbsa"]: m["redfin_name"] for m in metros}, adjusted=True
+    )
+    redfin_county = read_redfin_files(
+        REDFIN_COUNTY_URL, REDFIN_COUNTY_DROPS_URL, "county",
+        {c["redfin_table_id"]: c["redfin_name"] for c in counties}, adjusted=False,
+    )
     zillow = read_zillow_files(ZILLOW_URLS, "", {m["zillow_region_id"] for m in metros})
     zillow_county = read_zillow_files(ZILLOW_COUNTY_URLS, "co_", {c["zillow_region_id"] for c in counties})
     with open(fetch(PMMS_URL, "pmms_history.csv"), newline="") as f:

@@ -6,24 +6,26 @@ term_years = 30
 
 # One hand-written line shown above the cards on every view. Rewrite it when the weekly data lands.
 [weekly]
-label = "10/23 Week Update"
-text = "The 30-year rate eased to 7.32% from 7.40%. September home values came in about flat (mid-tier Travis $460.1k → $461.1k; metro $413.7k → $414.3k), but Zillow revised earlier months down about 1%, so values read lower than last week. Rents were flat, and September permits have not posted yet."
+label = "11/6 Week Update"
+text = "The 30-year rate fell for a second week, to 7.18% from 7.32%. Redfin sales data now runs through September (it was stuck at May) after Redfin moved to new files; metro figures are now seasonally adjusted, so some cards shift from earlier levels. September permits brought a multifamily jump to 2,212 units from 777 while single-family slipped to 1,045, and new 2025 Census figures put metro median family income at $131,639, up 3.3%."
 
 [[metro]]
 id = "austin-tx"
 name = "Austin, TX"
-cbsa = "12420"               # Census CBSA code; also Redfin's TABLE_ID
+cbsa = "12420"               # Census CBSA code; also Redfin's REGION ID
+redfin_name = "Austin, TX metro area"   # Redfin REGION NAME; price drop files have no region id
 zillow_region_id = "394355"
 default_region = "travis"    # county shown at re-dash.com/ with no hash
 # ASSUMPTIONS, not sourced data - replace with real county figures:
 property_tax_rate = 0.019    # effective annual rate, placeholder estimate
 insurance_annual = 3000      # USD per year homeowners insurance, placeholder estimate
 
-# Counties in the metro. fips = state + county code; redfin_table_id is Redfin's county TABLE_ID.
+# Counties in the metro. fips = state + county code; redfin_table_id is Redfin's county REGION ID.
 # Counties use the metro's property tax and insurance placeholders.
 [[metro.county]]
 id = "travis"
 name = "Travis County"
+redfin_name = "Travis County, TX"
 fips = "48453"
 redfin_table_id = "2866"
 zillow_region_id = "1440"
@@ -31,6 +33,7 @@ zillow_region_id = "1440"
 [[metro.county]]
 id = "williamson"
 name = "Williamson County"
+redfin_name = "Williamson County, TX"
 fips = "48491"
 redfin_table_id = "2885"
 zillow_region_id = "3081"
@@ -38,6 +41,7 @@ zillow_region_id = "3081"
 [[metro.county]]
 id = "hays"
 name = "Hays County"
+redfin_name = "Hays County, TX"
 fips = "48209"
 redfin_table_id = "2744"
 zillow_region_id = "178"
@@ -45,6 +49,7 @@ zillow_region_id = "178"
 [[metro.county]]
 id = "bastrop"
 name = "Bastrop County"
+redfin_name = "Bastrop County, TX"
 fips = "48021"
 redfin_table_id = "2650"
 zillow_region_id = "1533"
@@ -52,6 +57,7 @@ zillow_region_id = "1533"
 [[metro.county]]
 id = "caldwell"
 name = "Caldwell County"
+redfin_name = "Caldwell County, TX"
 fips = "48055"
 redfin_table_id = "2667"
 zillow_region_id = "2164"
