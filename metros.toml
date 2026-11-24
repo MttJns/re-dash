@@ -6,8 +6,8 @@ term_years = 30
 
 # One hand-written line shown above the cards on every view. Rewrite it when the weekly data lands.
 [weekly]
-label = "11/6 Week Update"
-text = "The 30-year rate fell for a second week, to 7.18% from 7.32%. Redfin sales data now runs through September (it was stuck at May) after Redfin moved to new files; metro figures are now seasonally adjusted, so some cards shift from earlier levels. September permits brought a multifamily jump to 2,212 units from 777 while single-family slipped to 1,045, and new 2025 Census figures put metro median family income at $131,639, up 3.3%."
+label = "11/20 Week Update"
+text = "The 30-year rate rose to 7.28% from 7.11%, its first increase after four weekly declines. Redfin's October data shows the metro cooling: homes sold fell to 2,173 from 2,468 and new listings to 2,995 from 3,252, while months of supply rose to 7.1 from 6.0 and median days on market reached 91. Zillow's October values were about flat (mid-tier Travis $456.9k → $457.4k; metro $409.0k), but Zillow again revised earlier months down about 1%, and metro rent eased to $1,584. October permits have not posted yet."
 
 [[metro]]
 id = "austin-tx"
